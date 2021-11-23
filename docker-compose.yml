@@ -1,0 +1,26 @@
+services:
+  database:
+    image: postgres:14.1
+    hostname: psot_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jeronimo
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: psot_info
+    networks:
+      - psot_internal_backbone
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    depends_on:
+      - database
+    ports: 
+      - 8080:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "jeronimo@jeronimo.pt"
+      PGADMIN_DEFAULT_PASSWORD: "password123"
+    networks:
+      - psot_internal_backbone
+
+networks:
+  psot_internal_backbone: {}
