@@ -3,34 +3,63 @@ import asyncio
 import pyrcrack
 import dotmap
 
-from rich.console import Console
+import time
+import json
 
 
-async def scan_for_targets():
+async def scan_for_targets(number_of_iterations=5, iteration_duration=2):
     """Scan for targets, return json."""
-    console = Console()
-    console.clear()
-    console.show_cursor(False)
     airmon = pyrcrack.AirmonNg()
+
+    results = {}
 
     counter = 0
     async with airmon('wlp4s0') as mon:
+
         async with pyrcrack.AirodumpNg() as pdump:
+
+            # give time for scan
+            await asyncio.sleep(iteration_duration)
+
             async for result in pdump(mon.monitor_interface):
-                console.clear()
                 for access_point in result:
-                    print(f"{access_point}:")
+                    temp = results[f"{access_point}"] = {
+                        "name": access_point.essid,
+                        "macAddress": access_point.bssid,
+                        "numConnectedClients": len(access_point.clients),
+                        "concreteDetectedClients": []
+                    }
+
                     for client in access_point.clients:
                         mac_address = client.bssid
                         if not isinstance(mac_address, dotmap.DotMap):
-                            print(f"\t{mac_address}")
-                        else:
-                            print("\t n\\a")
+                            temp["concreteDetectedClients"].append({
+                                "mac_address": mac_address
+                            })
 
-                await asyncio.sleep(2)
                 counter += 1
-                if counter > 5:
+                if counter >= number_of_iterations:
                     break
+                await asyncio.sleep(iteration_duration)
+
+    return results
 
 
-asyncio.run(scan_for_targets())
+async def scan_for_devices():
+    access_points = await scan_for_targets(15, 2)
+
+    scan = {
+        "scanTime": time.time(),
+        "accessPoints": [ap for ap in access_points.values()]
+    }
+
+    return scan
+
+
+def main():
+    scan = asyncio.run(scan_for_devices())
+    print(json.dumps(scan, sort_keys=True, indent=4))
+
+
+if __name__ == "__main__":
+    main()
