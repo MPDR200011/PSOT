@@ -7,7 +7,7 @@ import time
 import json
 
 
-async def scan_for_targets(number_of_iterations=5, iteration_duration=2):
+async def scan_wifi(number_of_iterations=5, iteration_duration=2):
     """Scan for targets, return json."""
     airmon = pyrcrack.AirmonNg()
 
@@ -46,11 +46,11 @@ async def scan_for_targets(number_of_iterations=5, iteration_duration=2):
 
 
 async def scan_for_devices():
-    access_points = await scan_for_targets(15, 2)
+    access_points = await scan_wifi(15, 2)
 
     scan = {
         "scanTime": time.time(),
-        "accessPoints": [ap for ap in access_points.values()]
+        "wifiAccessPoints": [ap for ap in access_points.values()]
     }
 
     return scan
