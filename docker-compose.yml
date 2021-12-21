@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: jeronimo
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: psot_info
+    volumes:
+      - ./db/init/:/docker-entrypoint-initdb.d/
     networks:
       - psot_internal_backbone
 
