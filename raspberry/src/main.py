@@ -3,20 +3,26 @@ import time
 import scanner
 import sender
 import asyncio
+import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
+server = os.environ.get("DEST_HOST") or "http://localhost:8081"
 
 def scan_and_send():
-    print(f"{time.ctime()}: scanning")
-    scan = asyncio.run(scanner.scan_for_devices())
+    try:
+        print(f"{time.ctime()}: scanning")
+        scan = asyncio.run(scanner.scan_for_devices())
 
-    print("Waiting for interface to come back")
-    time.sleep(5)  # Wait for interface to come back online
+        print("Waiting for interface to come back")
+        time.sleep(5)  # Wait for interface to come back online
 
-    server = "localhost:8081"
-
-    print(f"Sending to: {server}")
-    sender.send_scan(scan, server)
-    print("Done\n")
+        print(f"Sending to: {server}")
+        sender.send_scan(scan, server)
+        print("Done\n")
+    except:
+        print("Error in this iteration")
 
 
 def main():
