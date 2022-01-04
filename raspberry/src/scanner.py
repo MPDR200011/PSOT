@@ -5,6 +5,7 @@ import dotmap
 
 import time
 import json
+import os
 
 
 async def scan_wifi(number_of_iterations=5, iteration_duration=2):
@@ -46,10 +47,36 @@ async def scan_wifi(number_of_iterations=5, iteration_duration=2):
 
 
 async def scan_for_devices():
+    """
+        Produces an object with the following strutcure
+        {
+            "scanTime": 0,
+            "place": <placeid>,
+            "wifiAccessPoints": [
+                {
+                    "name": "",
+                    "macAddress": "",
+                    "numConnectedClients": 0,
+                    "concreteDetectedClients": [
+                        {
+                            "macAddress": ""
+                        },
+                        .
+                        .
+                        .
+                    ]
+                },
+                .
+                .
+                .
+            ]
+        }
+    """
     access_points = await scan_wifi(15, 2)
 
     scan = {
         "scanTime": time.time(),
+        "place": os.environ.get("PLACE_ID"),
         "wifiAccessPoints": [ap for ap in access_points.values()]
     }
 
