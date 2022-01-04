@@ -1,4 +1,5 @@
 services:
+
   database:
     image: postgres:14.1
     hostname: psot_db
@@ -23,6 +24,13 @@ services:
       PGADMIN_DEFAULT_PASSWORD: "password123"
     networks:
       - psot_internal_backbone
+
+  aggregator:
+    build: aggregator/
+    networks:
+      - psot_internal_backbone
+    depends_on:
+      - database
 
 networks:
   psot_internal_backbone: {}
