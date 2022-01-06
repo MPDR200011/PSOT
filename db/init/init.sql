@@ -7,7 +7,8 @@ DROP TABLE IF EXISTS Client CASCADE;
 CREATE TABLE Place (
 	id SERIAL PRIMARY KEY,
     name varchar(50) NOT NULL,
-    capacity integer NOT NULL
+    capacity integer NOT NULL,
+    callibrationConstant real NOT NULL,
 );
 
 CREATE TABLE Scan (
