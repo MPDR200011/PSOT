@@ -15,7 +15,7 @@ async def scan_wifi(number_of_iterations=5, iteration_duration=2):
     results = {}
 
     counter = 0
-    async with airmon('wlp4s0') as mon:
+    async with airmon(os.environ.get("SCANNER_INTERFACE")) as mon:
 
         async with pyrcrack.AirodumpNg() as pdump:
 
