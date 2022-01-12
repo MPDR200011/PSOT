@@ -1,6 +1,7 @@
 import pg
 import os
 from dotenv import load_dotenv
+from collections import Counter
 
 
 def getScanAccessPoints(db, scanId):
@@ -25,6 +26,10 @@ def getPlaces(db):
 
 def getAllAccessPoints(db):
     return db.query('select * from AccessPoint').dictresult()
+
+
+def getAllClients(db):
+    return db.query('select * from Client').dictresult()
 
 
 def addOccupancies(db, occupancies):
@@ -62,21 +67,63 @@ def main():
     )
 
     invalidateOldScans(db)
+
+    allClients = getAllClients(db)
+    clientsByAP = groupBy(allClients, 'accessPointId')
+
+    allAccessPoints = getAllAccessPoints(db)
+    for accessPoint in allAccessPoints:
+        accessPoint['clients'] = clientsByAP[accessPoint['id']]
+
+    accessPointsByScan = groupBy(allAccessPoints, 'scanId')
+
     scans = getScans(db)
-    places = getPlaces(db)
-    scanAPs = groupBy(getAllAccessPoints(db), 'scanId')
+    for scan in scans:
+        scan['accessPoints'] = accessPointsByScan[scan['id']]
 
     occupancies = {}
+    scansByPlaces = groupBy(scans, 'placeId')
+    places = groupBy(getPlaces(db), 'id')
+    for (placeId, placeScans) in scansByPlaces.items():
+        # sort scans, most recent first
+        placeScans.sort(lambda s: s['time'], reverse=True)
 
-    for scanId in scanAPs.keys():
-        max = 0
-        for ap in scanAPs[scanId]:
-            max = max(max, ap.numConnectClients)
+        partitionTimeSpan = 10
+        initTime = placeScans[0]['time']
+        currentTime = initTime
+        scanPartitions = [set()]
+        currentPartition = scanPartitions[0]
 
-        place = places[scans[scanId].placeId]
+        # partition scans
+        for scan in placeScans:
+            while((scan['time'] - currentTime) > partitionTimeSpan):
+                if len(currentPartition) > 0:
+                    # no need to create new partition if 
+                    # the current one is empty
+                    newPartition = set()
+                    scanPartitions.append(newPartition)
+                    currentPartition = newPartition
+                currentTime += partitionTimeSpan
 
-        occupancy = (max * place.callibrationConstant) / place.capacity
+            for ap in scan['accessPoints']:
+                for client in ap['clients']:
+                    currentPartition.add(client['macAddress'])
 
-        occupancies[place.id] = occupancy
+        # count in how many partitions each mac address appears
+        counts = Counter()
+        for partition in scanPartitions:
+            counts.update(partition)
+
+        # chooses mac adresses that appear in
+        # a certain amount of different partitions
+        threshold = 4
+        confirmed = set(x for x, count in counts.items() if count >= threshold)
+
+        place = places[placeId]
+        occupancies[placeId] = \
+            (len(confirmed) * place['callibrationConstant'])\
+            / place['capacity']
+
+    addOccupancies(db, occupancies)
 
     db.close()
