@@ -34,9 +34,12 @@ def getAllClients(db):
 
 def addOccupancies(db, occupancies):
     db.query(
-        "insert into Occupancy (time, occupancyLevel, placeId)\
-            values (NOW(), $1, $2)",
-        [(k, v) for (k, v) in occupancies.items()]
+        "insert into Occupancy (time, occupancyPercentage, confirmedNumber,\
+        placeId) values (NOW(), $1, $2, $3)",
+        [
+            (v['percentage'], v['confirmedNumber'], k)
+            for (k, v) in occupancies.items()
+        ]
     )
 
 
@@ -98,7 +101,7 @@ def main():
         for scan in placeScans:
             while((scan['time'] - currentTime) > partitionTimeSpan):
                 if len(currentPartition) > 0:
-                    # no need to create new partition if 
+                    # no need to create new partition if
                     # the current one is empty
                     newPartition = set()
                     scanPartitions.append(newPartition)
@@ -120,9 +123,11 @@ def main():
         confirmed = set(x for x, count in counts.items() if count >= threshold)
 
         place = places[placeId]
-        occupancies[placeId] = \
-            (len(confirmed) * place['callibrationConstant'])\
-            / place['capacity']
+        occupancies[placeId] = {
+            'percentage': (len(confirmed) * place['callibrationConstant'])
+            / place['capacity'],
+            'confirmedNumber': len(confirmed)
+        }
 
     addOccupancies(db, occupancies)
 

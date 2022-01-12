@@ -20,7 +20,8 @@ CREATE TABLE Scan (
 CREATE TABLE Occupancy (
 	id SERIAL PRIMARY KEY,
     time timestamp NOT NULL,
-    occupancyLevel real NOT NULL,
+    occupancyPercentage real NOT NULL,
+    confirmedNumber integer NOT NULL,
     placeId SERIAL REFERENCES Place ("id") ON DELETE CASCADE
 );
 
