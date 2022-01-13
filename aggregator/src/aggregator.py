@@ -2,6 +2,8 @@ import pg
 import os
 from dotenv import load_dotenv
 from collections import Counter
+import sched
+import time
 
 
 def getScanAccessPoints(db, scanId):
@@ -55,9 +57,7 @@ def groupBy(objList, key):
     return res
 
 
-def main():
-    load_dotenv()
-
+def calculateOccupancies():
     # dbDialect = os.environ.get("DB_DIALECT") or "postgresql"
     dbUser = os.environ.get("DB_USER") or "jeronimo"
     dbPassword = os.environ.get("DB_PASSWORD") or "password123"
@@ -132,3 +132,20 @@ def main():
     addOccupancies(db, occupancies)
 
     db.close()
+
+
+def periodic(scheduler, interval, action, actionargs=()):
+    scheduler.enter(interval, 1, periodic,
+                    (scheduler, interval, action, actionargs))
+    action(*actionargs)
+
+
+def main():
+    load_dotenv()
+
+    scheduler = sched.scheduler(time.time, time.sleep)
+    periodic(scheduler, 60, calculateOccupancies)
+
+
+if __name__ == "__main__":
+    main()
