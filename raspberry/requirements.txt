@@ -1,4 +1,3 @@
 pyrcrack
-schedule
 requests
 python-dotenv

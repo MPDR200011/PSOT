@@ -4,42 +4,53 @@ from dotenv import load_dotenv
 from collections import Counter
 import sched
 import time
+import datetime
 
 
 def getScanAccessPoints(db, scanId):
     return db.query(
-        "select * from AccessPoint where scanId = $1",
+        "select * from access_point where scan_id = $1",
         (scanId,)
     ).dictresult()
 
 
 def invalidateOldScans(db):
     db.query(
-        "delete from Scan where scanTime >= NOW() - INTERVAL '5 minutes'")
+        "delete from scan where scan_time < NOW() - INTERVAL '7 minutes'")
 
 
 def getScans(db):
-    return db.query("select * from Scan").dictresult()
+    return db.query("select * from scan").dictresult()
 
 
 def getPlaces(db):
-    return db.query("select * from Place").dictresult()
+    return db.query("select * from place").dictresult()
 
 
 def getAllAccessPoints(db):
-    return db.query('select * from AccessPoint').dictresult()
+    return db.query('select * from access_point').dictresult()
 
 
 def getAllClients(db):
-    return db.query('select * from Client').dictresult()
+    return db.query('select * from client').dictresult()
+
+
+def getPlaceWhiteList(db, place_id):
+    return db.query('select * from ap_whitelist where place_id = $1',
+                    (place_id,)).dictresult()
+
+
+def getAllWhiteLists(db):
+    return db.query('select * from ap_whitelist')\
+                    .dictresult()
 
 
 def addOccupancies(db, occupancies):
     db.query(
-        "insert into Occupancy (time, occupancyPercentage, confirmedNumber,\
-        placeId) values (NOW(), $1, $2, $3)",
+        "insert into occupancy (time, occupancy_percentage, confirmed_number,\
+        place_id) values (NOW(), $1, $2, $3)",
         [
-            (v['percentage'], v['confirmedNumber'], k)
+            (v['percentage'], v['confirmed_number'], k)
             for (k, v) in occupancies.items()
         ]
     )
@@ -65,31 +76,69 @@ def calculateOccupancies():
     dbPort = os.environ.get("DB_PORT") or 5432
     dbName = os.environ.get("DB_NAME") or "psot_info"
 
+    print("Connecting...")
     db = pg.connect(
         dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
     )
 
+    print("Removing old scans...")
     invalidateOldScans(db)
 
+    print("Calculating occupancies...")
     allClients = getAllClients(db)
-    clientsByAP = groupBy(allClients, 'accessPointId')
+    clientsByAP = groupBy(allClients, 'access_point_id')
+    print(f"{len(allClients)} clients, devided into {len(clientsByAP)} APs")
 
     allAccessPoints = getAllAccessPoints(db)
     for accessPoint in allAccessPoints:
-        accessPoint['clients'] = clientsByAP[accessPoint['id']]
+        if accessPoint['id'] in clientsByAP:
+            accessPoint['clients'] = clientsByAP[accessPoint['id']]
+        else:
+            accessPoint['clients'] = []
 
-    accessPointsByScan = groupBy(allAccessPoints, 'scanId')
+    accessPointsByScan = groupBy(allAccessPoints, 'scan_id')
 
+    print(f"{len(allAccessPoints)} clients, divided into \
+    {len(accessPointsByScan)} scans")
+
+    accessPointWhiteLists = groupBy(getAllWhiteLists(db), 'place_id')
     scans = getScans(db)
     for scan in scans:
-        scan['accessPoints'] = accessPointsByScan[scan['id']]
+        accessPoints = []
+        if scan['id'] in accessPointsByScan:
+            accessPoints = accessPointsByScan[scan['id']]
+            if scan['place_id'] in accessPointWhiteLists:
+                whiteList = set(map(
+                    lambda x: x['name'],
+                    accessPointWhiteLists[scan['place_id']]
+                ))
+
+                filtered = filter(
+                    lambda ap: ap['name'] in whiteList,
+                    accessPoints
+                )
+                accessPoints = list(filtered)
+
+        scan['access_points'] = accessPoints
 
     occupancies = {}
-    scansByPlaces = groupBy(scans, 'placeId')
+    scansByPlaces = groupBy(scans, 'place_id')
     places = groupBy(getPlaces(db), 'id')
     for (placeId, placeScans) in scansByPlaces.items():
+        occupancies[placeId] = {
+            'percentage': 0,
+            'confirmed_number': 0
+        }
+
+        # convert time stamp strings to unix timestamps
+        for scan in placeScans:
+            scanTime = time.mktime(datetime.datetime.strptime(
+                    scan['scan_time'], "%Y-%m-%d %H:%M:%S").timetuple())
+            print(f"times: {scanTime}")
+            scan['time'] = scanTime
+
         # sort scans, most recent first
-        placeScans.sort(lambda s: s['time'], reverse=True)
+        placeScans.sort(key=lambda s: s['time'], reverse=True)
 
         partitionTimeSpan = 10
         initTime = placeScans[0]['time']
@@ -99,37 +148,44 @@ def calculateOccupancies():
 
         # partition scans
         for scan in placeScans:
-            while((scan['time'] - currentTime) > partitionTimeSpan):
+            while((currentTime - scan['time']) > partitionTimeSpan):
                 if len(currentPartition) > 0:
                     # no need to create new partition if
                     # the current one is empty
                     newPartition = set()
                     scanPartitions.append(newPartition)
                     currentPartition = newPartition
-                currentTime += partitionTimeSpan
+                currentTime -= partitionTimeSpan
 
-            for ap in scan['accessPoints']:
+            for ap in scan['access_points']:
                 for client in ap['clients']:
-                    currentPartition.add(client['macAddress'])
+                    currentPartition.add(client['mac_address'])
+
+        print(scanPartitions)
 
         # count in how many partitions each mac address appears
         counts = Counter()
         for partition in scanPartitions:
             counts.update(partition)
+        print(counts)
 
         # chooses mac adresses that appear in
         # a certain amount of different partitions
-        threshold = 4
+        threshold = 2
         confirmed = set(x for x, count in counts.items() if count >= threshold)
 
-        place = places[placeId]
+        place = places[placeId][0]
         occupancies[placeId] = {
-            'percentage': (len(confirmed) * place['callibrationConstant'])
+            'percentage': (len(confirmed) * place['callibration_constant'])
             / place['capacity'],
-            'confirmedNumber': len(confirmed)
+            'confirmed_number': len(confirmed)
         }
 
-    addOccupancies(db, occupancies)
+        print(f"Place {place['name']}, \
+        calculated {len(confirmed)} people")
+
+    if len(occupancies) > 0:
+        addOccupancies(db, occupancies)
 
     db.close()
 
@@ -145,6 +201,7 @@ def main():
 
     scheduler = sched.scheduler(time.time, time.sleep)
     periodic(scheduler, 60, calculateOccupancies)
+    scheduler.run()
 
 
 if __name__ == "__main__":

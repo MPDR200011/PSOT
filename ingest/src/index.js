@@ -1,6 +1,8 @@
 import express from 'express';
-const { Pool } = require('pg')
-let format = require('pg-format');
+import pg from 'pg';
+import format from 'pg-format';
+
+const { Pool } = pg;
 
 const pool = new Pool({
     user: 'jeronimo',
@@ -36,18 +38,16 @@ app.use(express.json())
         .
     ]
 }*/
-app.post('/ingest', (req, res) => {
+app.post('/ingest', async (req, res) => {
     console.log(`received stuff: ${JSON.stringify(req.body)}`);
     const scan = req.body;
 
-    await pool.query("BEGIN");
-    
-    const scanQuery = await pool.query('insert into Scan (scanTime, placeId) values ($1, $2)', [scan.scanTime, scan.place]);
+    const scanQuery = await pool.query('insert into scan (scan_time, place_id) values ($1, $2) RETURNING *', [scan.scanTime, scan.place]);
     const scanId = scanQuery.rows[0].id;
 
     const queries = scan.wifiAccessPoints.map(async ap => {
         const accessPointQuery = await pool.query(
-            'insert into AccessPoint (name, macAddress, numConnectClients, scanId) values ($1, $2, $3, $4)', 
+            'insert into access_point (name, mac_address, num_connected_clients, scan_id) values ($1, $2, $3, $4) RETURNING *', 
             [ap.name, ap.macAddress, ap.numConnectedClients, scanId]
             );
             
@@ -57,11 +57,12 @@ app.post('/ingest', (req, res) => {
             return [cl.macAddress, scanId, accessPointId];
         })
 
-        await pool.query(format('insert into AccessPoint (macAddress, scanId, accessPointId) values %L', clients));
+        if (clients.length > 0) {
+            await pool.query(format('insert into client (mac_address, scan_id, access_point_id) values %L', clients));
+        }
     });
 
     Promise.all(queries);
-    await pool.query("COMMIT");
     
     res.send('OK');
 })

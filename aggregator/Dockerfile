@@ -1,8 +1,9 @@
 FROM python:3.10
 
+RUN apt-get update && apt-get install libpq-dev
+
 COPY . /aggregator/
 
-RUN apt-get update && apt-get install libpq-dev
 RUN pip install -r /aggregator/requirements.txt
 
-CMD python /aggregator/src/aggregator.py
+CMD python -u /aggregator/src/aggregator.py

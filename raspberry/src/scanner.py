@@ -35,7 +35,7 @@ async def scan_wifi(number_of_iterations=5, iteration_duration=2):
                         mac_address = client.bssid
                         if not isinstance(mac_address, dotmap.DotMap):
                             temp["concreteDetectedClients"].append({
-                                "mac_address": mac_address
+                                "macAddress": mac_address
                             })
 
                 counter += 1
@@ -74,8 +74,9 @@ async def scan_for_devices():
     """
     access_points = await scan_wifi(15, 2)
 
+    scanTime = time.strftime("%Y-%m-%d %H:%M:%S")
     scan = {
-        "scanTime": time.time(),
+        "scanTime": scanTime,
         "place": os.environ.get("PLACE_ID"),
         "wifiAccessPoints": [ap for ap in access_points.values()]
     }
