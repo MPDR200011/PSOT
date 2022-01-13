@@ -32,5 +32,14 @@ services:
     depends_on:
       - database
 
+  ingest:
+    build: ingest/
+    networks:
+      - psot_internal_backbone
+    ports:
+      - 8081:80
+    depends_on:
+      - database
+
 networks:
   psot_internal_backbone: {}
