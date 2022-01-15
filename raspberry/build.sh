@@ -2,4 +2,4 @@
 
 set -x
 
-docker buildx build . --tag mpdr/psot-scanner:latest --push
+docker build . --tag mpdr/psot-scanner:latest
