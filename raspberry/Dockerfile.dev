@@ -1,8 +1,8 @@
 FROM python:3.10
 
-COPY . /scanner/
+RUN apt-get update && apt-get install -y aircrack-ng pciutils iproute2
 
-RUN apt update & apt install -y aircrack-ng pciutils iproute2
+COPY . /scanner/
 RUN pip install -r /scanner/requirements.txt
 
 VOLUME /scanner
