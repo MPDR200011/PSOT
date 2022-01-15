@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker build . --tag psot-scanner
+docker build . --tag mpdr/psot-scanner:latest
