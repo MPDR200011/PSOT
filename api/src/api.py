@@ -47,8 +47,15 @@ def queryPlaces(db):
     return db.query("select * from place").dictresult()
 
 
-def queryPlacesOccupancies(db):
+def queryAllOccupancies(db):
     return db.query("select * from recent_occupancies").dictresult()
+
+
+def queryPlaceOccupancy(db, placeId):
+    return db.query(
+        "select * from recent_occupancies where id = $1",
+        (placeId,)
+    ).dictresult()
 
 
 @app.route("/places")
@@ -58,7 +65,13 @@ def getPlaces():
 
 @app.route("/occupancies")
 def getOccupancies():
-    occupancies = groupBy(queryPlacesOccupancies(db), 'id')
+    occupancies = groupBy(queryAllOccupancies(db), 'id')
     for placeId in occupancies.keys():
         occupancies[placeId] = occupancies[placeId][0]
     return occupancies
+
+
+@app.route("/occupancies/<placeId>")
+def getPlaceOccupancy(placeId):
+    occupancy = queryPlaceOccupancy(db, placeId)[0]
+    return occupancy
