@@ -8,8 +8,10 @@ services:
       POSTGRES_USER: jeronimo
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: psot_info
+      PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
       - ./db/init/:/docker-entrypoint-initdb.d/
+      - psot_db_persist:/var/lib/postgresql/data/
     networks:
       - psot_internal_backbone
 
@@ -40,6 +42,9 @@ services:
       - 8081:80
     depends_on:
       - database
+
+volumes:
+  psot_db_persist:
 
 networks:
   psot_internal_backbone: {}
