@@ -45,3 +45,19 @@ CREATE TABLE ap_whitelist (
     place_id SERIAL REFERENCES place ("id") ON DELETE CASCADE,
     name varchar(255) NOT NULL
 );
+
+create view place_occupancy as 
+select place.id, time, occupancy_percentage, confirmed_number, name, capacity 
+from occupancy right join place 
+on place_id = place.id;
+
+create view recent_occupancies as SELECT tbl.*
+FROM place_occupancy tbl
+  right JOIN
+  (
+    SELECT id, max(time) as maxTime
+    FROM place_occupancy
+    GROUP BY id
+  ) tbl1
+  ON tbl1.id = tbl.id
+WHERE tbl1.maxTime = tbl.time;
