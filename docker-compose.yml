@@ -53,6 +53,17 @@ services:
       - 8089:5000
     depends_on:
       - database
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto
+    hostname: psot_notifications
+    networks:
+      - psot_internal_backbone
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    ports:
+      - 1883:1883
 
 volumes:
   psot_db_persist:
