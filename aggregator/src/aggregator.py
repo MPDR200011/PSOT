@@ -198,7 +198,7 @@ def calculateOccupancies(mqtt_client):
             publishingData[placeId] = {
                 'name': places[placeId][0]['name'],
                 'id': placeId,
-                'occupancy_percentage': occupancy['occupancy_percentage'],
+                'occupancy_percentage': occupancy['percentage'],
                 'confirmed_number': occupancy['confirmed_number']
             }
 

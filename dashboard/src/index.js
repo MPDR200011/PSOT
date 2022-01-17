@@ -9,11 +9,20 @@ import {
     Routes,
     Route
 } from 'react-router-dom';
+import {
+    Navbar,
+    Container
+} from 'react-bootstrap'
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 ReactDOM.render(
     <React.StrictMode>
+        <Navbar bg="light" expand="lg">
+            <Container>
+                <Navbar.Brand href="/">PSOT</Navbar.Brand>
+            </Container>
+        </Navbar>
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<App/>}/>
