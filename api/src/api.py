@@ -58,6 +58,14 @@ def queryPlaceOccupancy(db, placeId):
     ).dictresult()
 
 
+def queryPlaceOccupancyHistory(db, placeId):
+    return db.query(
+        "select * from occupancy where place_id=$1\
+        and time >= NOW() - interval '12 hours'",
+        (placeId,)
+    ).dictresult()
+
+
 @app.route("/places")
 def getPlaces():
     return {'places': queryPlaces(db)}
@@ -75,3 +83,19 @@ def getOccupancies():
 def getPlaceOccupancy(placeId):
     occupancy = queryPlaceOccupancy(db, placeId)[0]
     return occupancy
+
+
+@app.route("/occupancies/<placeId>/history")
+def getPlaceOccupancyHistory(placeId):
+    queryResult = queryPlaceOccupancyHistory(db, placeId)
+
+    history = {
+        'placeId': placeId,
+        'records': [{
+            'time': row['time'],
+            'percentage': row['occupancy_percentage'],
+            'confirmedNumber': row['confirmed_number']
+        } for row in queryResult]
+    }
+
+    return history
