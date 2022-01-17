@@ -38,10 +38,6 @@ def groupBy(objList, key):
 app = Flask(__name__)
 CORS(app)
 
-db = pg.connect(
-    dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
-)
-
 
 def queryPlaces(db):
     return db.query("select * from place").dictresult()
@@ -61,18 +57,26 @@ def queryPlaceOccupancy(db, placeId):
 def queryPlaceOccupancyHistory(db, placeId):
     return db.query(
         "select * from occupancy where place_id=$1\
-        and time >= NOW() - interval '12 hours'",
+        and time >= NOW() - interval '6 hours'",
         (placeId,)
     ).dictresult()
 
 
 @app.route("/places")
 def getPlaces():
+    db = pg.connect(
+        dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
+    )
+
     return {'places': queryPlaces(db)}
 
 
 @app.route("/occupancies")
 def getOccupancies():
+    db = pg.connect(
+        dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
+    )
+
     occupancies = groupBy(queryAllOccupancies(db), 'id')
     for placeId in occupancies.keys():
         occupancies[placeId] = occupancies[placeId][0]
@@ -81,12 +85,20 @@ def getOccupancies():
 
 @app.route("/occupancies/<placeId>")
 def getPlaceOccupancy(placeId):
+    db = pg.connect(
+        dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
+    )
+
     occupancy = queryPlaceOccupancy(db, placeId)[0]
     return occupancy
 
 
 @app.route("/occupancies/<placeId>/history")
 def getPlaceOccupancyHistory(placeId):
+    db = pg.connect(
+        dbname=dbName, host=dbHost, port=dbPort, user=dbUser, passwd=dbPassword
+    )
+
     queryResult = queryPlaceOccupancyHistory(db, placeId)
 
     history = {
