@@ -192,8 +192,19 @@ def calculateOccupancies(mqtt_client):
             addOccupancies(db, occupancies)
         db.close()
 
+        # prepare data for publishing
+        publishingData = {}
+        for (placeId, occupancy) in occupancies.items():
+            publishingData[placeId] = {
+                'name': places[placeId][0]['name'],
+                'id': placeId,
+                'occupancy_percentage': occupancy['occupancy_percentage'],
+                'confirmed_number': occupancy['confirmed_number']
+            }
+
         print("Publishing to MQTT...")
-        mqtt_client.publish('occupancy_notifications', json.dumps(occupancies))
+        mqtt_client.publish(
+            'occupancy_notifications', json.dumps(publishingData))
         print("Done")
 
     except Exception as e:
